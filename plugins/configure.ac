@@ -84,7 +84,7 @@ case "$target_os" in
           LDSO='-dynamiclib -multiply_defined suppress'
           CFLAGS="$CFLAGS -fPIC -D__MACOSX__"
           case "$target_cpu" in
-            x86 | i686 | i586 | i486 | i386 ) CFLAGS="${CFLAGS} -m486" ;;
+            x86 | i686 | i586 | i486 | i386 ) CFLAGS="${CFLAGS}" ;;
           esac
           PLUGINEXT=dylib 
           AC_CHECK_HEADERS([sys/time.h sys/file.h netinet/in.h])
