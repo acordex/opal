@@ -31,3 +31,9 @@ html/
 
 
 log
+
+plugins/audio/SILK/SILK_SDK/*/*.o
+plugins/audio/SILK/SILK_SDK/decoder
+plugins/audio/SILK/SILK_SDK/encoder
+plugins/audio/SILK/SILK_SDK/signalcompare
+plugins/audio/SILK/SILK_SDK/*.a
