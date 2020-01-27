@@ -91,6 +91,9 @@ static RTP_UDP * GetRTPFromStream(const OpalMediaStream & stream)
 
 void OpalRTPEndPoint::OnClosedMediaStream(const OpalMediaStream & stream)
 {
+	/* Acordex CB - debatable if this should be commented out to prevent crash,
+	 * similar code was commented out in old version, but better checking in
+	 * CheckEndLocalRTP() may have fixed this */
   CheckEndLocalRTP(stream.GetConnection(), GetRTPFromStream(stream));
 
   OpalEndPoint::OnClosedMediaStream(stream);
@@ -114,6 +117,8 @@ bool OpalRTPEndPoint::CheckForLocalRTP(const OpalRTPMediaStream & stream)
   if (rtp == NULL)
     return false;
 
+	/* Acordex - this code was commented out in old version to prevent crash,
+	 * it may be that this slightly different code fixes the issue */
   OpalConnection & connection = stream.GetConnection();
 
   if (!PIPSocket::IsLocalHost(rtp->GetRemoteAddress())) {

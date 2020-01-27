@@ -434,25 +434,44 @@ class T38PseudoRTP_Handler : public RTP_Encoding
         return RTP_Session::e_IgnorePacket;
       }
 
+      // Acordex CB 8/9/2010 - if high bit of sequence number set and no good packets yet, this is actually a left over
+      // 711 packet and switching to t38 hasn't started yet, or if expect number is not near 0x8000 this is a 711
+      // packet occurring after fax transmission has completed
+	  if ((m_receivedPacket.m_seq_number & 0x8000) && (m_awaitingGoodPacket || m_expectedSequenceNumber < 0x7ff0)) {
+        m_consecutiveBadPackets++;
+        // this is OK if only a few, or we haven't received many good packets yet
+        if (m_consecutiveBadPackets < 50 || ((m_awaitingGoodPacket || m_expectedSequenceNumber < 20) && m_consecutiveBadPackets < 1000))
+          return RTP_Session::e_IgnorePacket;
+
+        PTRACE(0, "RTP_T38\tRaw data sequence decode failed 1000 times, remote probably not switched from audio, aborting!");
+        return RTP_Session::e_AbortTransport;
+	  	}
+	  	
       PTRACE_IF(3, m_awaitingGoodPacket, "T38_UDPTL\tFirst decoded UDPTL packet");
       m_awaitingGoodPacket = false;
       m_consecutiveBadPackets = 0;
 
       PTRACE(5, "T38_UDPTL\tDecoded UDPTL packet:\n  " << setprecision(2) << m_receivedPacket);
+// Acordex - for test, to generate packet drop errors
+//	if ((m_receivedPacket.m_seq_number % 100) >= 96) {
+//      PTRACE(0, "T38_UDPTL\tError recovery test dropped SN=" << m_receivedPacket.m_seq_number);
+//		return RTP_Session::e_IgnorePacket;
+//		}
 
       int missing = m_receivedPacket.m_seq_number - m_expectedSequenceNumber;
       if (missing > 0 && m_receivedPacket.m_error_recovery.GetTag() == T38_UDPTLPacket_error_recovery::e_secondary_ifp_packets) {
         // Packets are missing and we have redundency in the UDPTL packets
         T38_UDPTLPacket_error_recovery_secondary_ifp_packets & secondaryPackets = m_receivedPacket.m_error_recovery;
         if (secondaryPackets.GetSize() > 0) {
-          PTRACE(4, "T38_UDPTL\tUsing redundant data to reconstruct missing/out of order packet at SN=" << m_expectedSequenceNumber);
           m_secondaryPacket = missing;
           if (m_secondaryPacket > secondaryPackets.GetSize())
             m_secondaryPacket = secondaryPackets.GetSize();
+          PTRACE(0, "T38_UDPTL\tUsing redundant data to reconstruct missing/out of order packet at SN=" << m_expectedSequenceNumber << " missing " << missing << " can reconstruct " << m_secondaryPacket);
           SetFrameFromIFP(frame, secondaryPackets[m_secondaryPacket-1], m_receivedPacket.m_seq_number - m_secondaryPacket);
           --m_secondaryPacket;
           return RTP_Session::e_ProcessPacket;
         }
+        PTRACE(0, "T38_UDPTL\tdropped " << missing << " T38 packets at " << m_expectedSequenceNumber << " no redundant data to recover");
       }
 
       SetFrameFromIFP(frame, m_receivedPacket.m_primary_ifp_packet, m_receivedPacket.m_seq_number);

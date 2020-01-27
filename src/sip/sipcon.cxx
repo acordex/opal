@@ -131,7 +131,9 @@ static SIP_PDU::StatusCodes GetStatusCodeFromReason(OpalConnection::CallEndReaso
   }
   ReasonToSIPCode[] = {
     { OpalConnection::EndedByNoUser            , SIP_PDU::Failure_NotFound               }, // Unallocated number
-    { OpalConnection::EndedByLocalBusy         , SIP_PDU::Failure_BusyHere               }, // user busy                            
+// Acordex CB 6/18/2015 - Change to busy everywhere to prevent VOIP from retrying immediately and generating calling loop error 
+ 	{ OpalConnection::EndedByLocalBusy         , SIP_PDU::GlobalFailure_BusyEverywhere               }, // user busy                            
+//    { OpalConnection::EndedByLocalBusy         , SIP_PDU::Failure_BusyHere               }, // user busy                            
     { OpalConnection::EndedByLocalUser         , SIP_PDU::Failure_BusyHere               }, // user busy                            
     { OpalConnection::EndedByNoAnswer          , SIP_PDU::Failure_RequestTimeout         }, // no user responding                   
     { OpalConnection::EndedByNoUser            , SIP_PDU::Failure_TemporarilyUnavailable }, // subscriber absent                    
@@ -174,8 +176,10 @@ static OpalConnection::CallEndReason GetCallEndReasonFromResponse(SIP_PDU & resp
     { SIP_PDU::Failure_NotFound                   , OpalConnection::EndedByNoUser            ,   1 }, // Unallocated number
     { SIP_PDU::Failure_MethodNotAllowed           , OpalConnection::EndedByQ931Cause         ,  63 }, // Service or option unavailable
     { SIP_PDU::Failure_NotAcceptable              , OpalConnection::EndedByQ931Cause         ,  79 }, // Service/option not implemented (+)
+// Acordex CB 11/15/10 happens if remote does not respond when number actually busy
     { SIP_PDU::Failure_ProxyAuthenticationRequired, OpalConnection::EndedBySecurityDenial    ,  21 }, // Call rejected (*)
-    { SIP_PDU::Failure_RequestTimeout             , OpalConnection::EndedByTemporaryFailure  , 102 }, // Recovery on timer expiry
+	{ SIP_PDU::Failure_RequestTimeout             , OpalConnection::EndedByRemoteCongestion  , 102 }, // Recovery on timer expiry
+//	{ SIP_PDU::Failure_RequestTimeout             , OpalConnection::EndedByTemporaryFailure  , 102 }, // Recovery on timer expiry
     { SIP_PDU::Failure_Gone                       , OpalConnection::EndedByQ931Cause         ,  22 }, // Number changed (w/o diagnostic)
     { SIP_PDU::Failure_RequestEntityTooLarge      , OpalConnection::EndedByQ931Cause         , 127 }, // Interworking (+)
     { SIP_PDU::Failure_RequestURITooLong          , OpalConnection::EndedByQ931Cause         , 127 }, // Interworking (+)
@@ -196,7 +200,9 @@ static OpalConnection::CallEndReason GetCallEndReasonFromResponse(SIP_PDU & resp
     { SIP_PDU::Failure_NotImplemented             , OpalConnection::EndedByQ931Cause         ,  79 }, // Not implemented, unspecified
     { SIP_PDU::Failure_BadGateway                 , OpalConnection::EndedByOutOfService      ,  38 }, // Network out of order
     { SIP_PDU::Failure_ServiceUnavailable         , OpalConnection::EndedByOutOfService      ,  41 }, // Temporary failure
-    { SIP_PDU::Failure_ServerTimeout              , OpalConnection::EndedByOutOfService      , 102 }, // Recovery on timer expiry
+//  Acordex CB 11/15/10 happens if remote does not respond when number actually busy
+    { SIP_PDU::Failure_ServerTimeout              , OpalConnection::EndedByRemoteCongestion      , 102 }, // Recovery on timer expiry
+//    { SIP_PDU::Failure_ServerTimeout              , OpalConnection::EndedByOutOfService      , 102 }, // Recovery on timer expiry
     { SIP_PDU::Failure_SIPVersionNotSupported     , OpalConnection::EndedByQ931Cause         , 127 }, // Interworking (+)
     { SIP_PDU::Failure_MessageTooLarge            , OpalConnection::EndedByQ931Cause         , 127 }, // Interworking (+)
     { SIP_PDU::GlobalFailure_BusyEverywhere       , OpalConnection::EndedByRemoteBusy        ,  17 }, // User busy
@@ -593,7 +599,7 @@ PBoolean SIPConnection::SetAlerting(const PString & /*calleeName*/, PBoolean wit
     SendInviteResponse(SIP_PDU::Information_Ringing);
   else {
     SDPSessionDescription sdpOut(m_sdpSessionId, ++m_sdpVersion, GetDefaultSDPConnectAddress());
-    if (!OnSendAnswerSDP(m_rtpSessions, sdpOut)) {
+    if (!OnSendAnswerSDP(m_rtpSessions, sdpOut, false)) {
       Release(EndedByCapabilityExchange);
       return PFalse;
     }
@@ -845,9 +851,10 @@ bool SIPConnection::OnSendOfferSDPSession(const OpalMediaType & mediaType,
                                                          bool   offerOpenMediaStreamOnly)
 {
   OpalMediaType::AutoStartMode autoStart = GetAutoStart(mediaType);
-  if (rtpSessionId == 0 && autoStart == OpalMediaType::DontOffer)
+  if (rtpSessionId == 0 && autoStart == OpalMediaType::DontOffer) {
+    PTRACE(3, "SIP\tMedia type " << mediaType << " not autostart, not adding SDP");
     return false;
-
+  }
   // See if any media formats of this session id, so don't create unused RTP session
   if (!m_localMediaFormats.HasType(mediaType)) {
     PTRACE(3, "SIP\tNo media formats of type " << mediaType << ", not adding SDP");
@@ -957,9 +964,13 @@ bool SIPConnection::OnSendOfferSDPSession(const OpalMediaType & mediaType,
       localMedia->SetDirection(SDPMediaDescription::SendRecv);
     else if (recving)
       localMedia->SetDirection(SDPMediaDescription::RecvOnly);
-    else if (sending)
+    else if (sending) {
+    	// Acordex added better diagnostics */
+      if (m_holdToRemote >= eHoldOn) { PTRACE(0, "SIP\tSend only because m_holdToRemote"); }
+      if (recvStream == NULL) { PTRACE(0, "SIP\tSend only because recvStream == NULL"); }
+      else if (!recving) { PTRACE(0, "SIP\tSend only because recvStream not open");  }  
       localMedia->SetDirection(SDPMediaDescription::SendOnly);
-    else
+    } else
       localMedia->SetDirection(SDPMediaDescription::Inactive);
 
 #if PAUSE_WITH_EMPTY_ADDRESS
@@ -1026,7 +1037,8 @@ static bool PauseOrCloseMediaStream(OpalMediaStreamPtr & stream,
 }
 
 
-bool SIPConnection::OnSendAnswerSDP(OpalRTPSessionManager & rtpSessions, SDPSessionDescription & sdpOut)
+// Acordex added reinvite parameter
+bool SIPConnection::OnSendAnswerSDP(OpalRTPSessionManager & rtpSessions, SDPSessionDescription & sdpOut, bool reInvite)
 {
   if (!PAssert(originalInvite != NULL, PLogicError))
     return false;
@@ -1067,6 +1079,25 @@ bool SIPConnection::OnSendAnswerSDP(OpalRTPSessionManager & rtpSessions, SDPSess
     return false;
   }
 
+/* Acordex idea that was commented out
+  bool switchingToFax = sdp->GetMediaDescriptionByType(OpalMediaType::Fax()) != NULL;
+  PTRACE(3, "SIP\tOnSendAnswerSDP fax " << m_switchedToFaxMode << " reInvite " << reInvite << " switchingToFax " << switchingToFax);
+  
+  // Acordex CB 10/27/10 - If they reinvite us and we are in fax mode, stay in fax mode
+  if (!switchingToFax && reInvite && !mediaStreams.IsEmpty()) {
+    std::vector<bool> sessions;
+    for (OpalMediaStreamPtr stream(mediaStreams, PSafeReference); stream != NULL; ++stream) {
+      std::vector<bool>::size_type session = stream->GetSessionID();
+      sessions.resize(std::max(sessions.size(),session+1));
+      if (!sessions[session]) {
+        sessions[session] = true;
+        if (OnSendOfferSDPSession(stream->GetMediaFormat().GetMediaType(), session, rtpSessions, sdpOut, true)) {
+  		  PTRACE(0, "SIP\tOnSendAnswerSDP insisted on fax on re-invite");
+          return(TRUE);
+          }
+      }
+    }
+  } */
   bool sdpOK = false;
   unsigned sessionCount = sdp->GetMediaDescriptions().GetSize();
 
@@ -1087,6 +1118,21 @@ bool SIPConnection::OnSendAnswerSDP(OpalRTPSessionManager & rtpSessions, SDPSess
             outgoingMedia->AddSDPMediaFormat(new SDPMediaFormat(incomingMedia->GetSDPMediaFormats().front()));
           sdpOut.AddMediaDescription(outgoingMedia);
         }
+      }
+    }
+  }
+
+  // Acordex CB 10/19/10 - on a re-invite, if there is no match, offer any already open streams in response, this
+  // seems to work better than just responding not acceptable here
+  if (reInvite && !sdpOK && !mediaStreams.IsEmpty()) {
+    std::vector<bool> sessions;
+    for (OpalMediaStreamPtr stream(mediaStreams, PSafeReference); stream != NULL; ++stream) {
+      std::vector<bool>::size_type session = stream->GetSessionID();
+      sessions.resize(std::max(sessions.size(),session+1));
+      if (!sessions[session]) {
+        sessions[session] = true;
+        if (OnSendOfferSDPSession(stream->GetMediaFormat().GetMediaType(), session, rtpSessions, sdpOut, true))
+          sdpOK = true;
       }
     }
   }
@@ -1217,9 +1263,14 @@ bool SIPConnection::OnSendAnswerSDPSession(const SDPSessionDescription & sdpIn,
     }
 
     if (sendStream != NULL) {
-      sendStream->UpdateMediaFormat(*m_answerFormatList.FindFormat(sendStream->GetMediaFormat()));
+// Acordex CB 4/7/11 - changed so solve crashing bug in UpdateMediaFormat()
+//   sendStream->UpdateMediaFormat(*m_answerFormatList.FindFormat(sendStream->GetMediaFormat()));
+     OpalMediaFormatList::const_iterator fmt = m_answerFormatList.FindFormat(sendStream->GetMediaFormat());
+	  if (fmt != m_answerFormatList.end())
+		sendStream->UpdateMediaFormat(*fmt);
+	  else PTRACE(0, "Send Media format not found");
       sendStream->SetPaused((otherSidesDir&SDPMediaDescription::RecvOnly) == 0);
-    }
+    } else PTRACE(0, "OnSendAnswerSDPSession: Null Send Stream ?");
 
     if (recvStream == NULL) {
       PTRACE(5, "SIP\tOpening rx " << mediaType << " stream from SDP");
@@ -1232,15 +1283,19 @@ bool SIPConnection::OnSendAnswerSDPSession(const SDPSessionDescription & sdpIn,
     }
 
     if (recvStream != NULL) {
-      OpalMediaFormat adjustedMediaFormat = *m_answerFormatList.FindFormat(recvStream->GetMediaFormat());
+	// Acordex added check of valid format returned
+      OpalMediaFormatList::const_iterator fmt = m_answerFormatList.FindFormat(recvStream->GetMediaFormat());
+	  if (fmt != m_answerFormatList.end()) {
+		  OpalMediaFormat adjustedMediaFormat = *m_answerFormatList.FindFormat(recvStream->GetMediaFormat());
 
-      // If we are sendrecv we will receive the same payload type as we transmit.
-      if (newDirection == SDPMediaDescription::SendRecv)
-        adjustedMediaFormat.SetPayloadType(sendStream->GetMediaFormat().GetPayloadType());
+		  // If we are sendrecv we will receive the same payload type as we transmit.
+		  if (newDirection == SDPMediaDescription::SendRecv)
+			adjustedMediaFormat.SetPayloadType(sendStream->GetMediaFormat().GetPayloadType());
 
-      recvStream->UpdateMediaFormat(adjustedMediaFormat);
+		  recvStream->UpdateMediaFormat(adjustedMediaFormat);
+	  } else PTRACE(0, "Recv Media format not found");
       recvStream->SetPaused((otherSidesDir&SDPMediaDescription::SendOnly) == 0);
-    }
+    } else PTRACE(0, "OnSendAnswerSDPSession: Null Recv Stream ?");
   }
 
   // Now we build the reply, setting "direction" as appropriate for what we opened.
@@ -1407,10 +1462,13 @@ OpalMediaStreamPtr SIPConnection::OpenMediaStream(const OpalMediaFormat & mediaF
     }
   }
 
+// Acordex CB 2/7/11 - No source change, this re-invite seems to be generated if the opening of a stream should trigger an invite,
+// which seems to happen sometimes the t38modem design.
   if (!m_symmetricOpenStream && !m_handlingINVITE && GetPhase() == EstablishedPhase &&
-              (newStream != oldStream || GetMediaStream(sessionID, !isSource) != otherStream))
+              (newStream != oldStream || GetMediaStream(sessionID, !isSource) != otherStream)) {
+ 	PTRACE(1, "Re-invite from OpenMediaStream");
     SendReINVITE(PTRACE_PARAM("open channel"));
-
+  }
   return newStream;
 }
 
@@ -1441,7 +1499,7 @@ bool SIPConnection::SendReINVITE(PTRACE_PARAM(const char * msg))
 {
   bool startImmediate = !m_handlingINVITE && pendingInvitations.IsEmpty();
 
-  PTRACE(3, "SIP\t" << (startImmediate ? "Start" : "Queue") << "ing re-INVITE to " << msg);
+  PTRACE(startImmediate ? 3 : 0, "SIP\t" << (startImmediate ? "Start" : "Queue") << "ing re-INVITE to " << msg);
 
   m_needReINVITE = true;
 
@@ -1457,18 +1515,27 @@ bool SIPConnection::SendReINVITE(PTRACE_PARAM(const char * msg))
   }
 
   pendingInvitations.Append(invite);
+// Acordex CB 2/3/11 - add this check to see if this race condition happens
+  if (!startImmediate && !m_handlingINVITE)
+  	 PTRACE(0, "Race condition during re-INVITE to " << msg);
   return true;
 }
 
 
-bool SIPConnection::StartPendingReINVITE()
+bool SIPConnection::StartPendingReINVITE(int from)
 {
+  // Acordex CB 10/26/10 avoid crash is called from SIPTransaction::OnTimeout and connection has been closed
+  if (GetPhase() != EstablishedPhase) {
+    PTRACE(1, "Reinvite surpressed, not established from " << from);
+    return false;
+	}
   while (!pendingInvitations.IsEmpty()) {
     PSafePtr<SIPTransaction> reInvite = pendingInvitations.GetAt(0, PSafeReadWrite);
     if (reInvite->IsInProgress())
       break;
 
     if (!reInvite->IsCompleted()) {
+      PTRACE(1, "Reinvite started from " << from);
       if (reInvite->Start()) {
         m_handlingINVITE = true;
         return true;
@@ -2169,8 +2236,9 @@ void SIPConnection::OnReceivedResponse(SIPTransaction & transaction, SIP_PDU & r
     }
 
     case SIP_PDU::Failure_RequestPending :
+      PTRACE(0, "491 Request pending received");
       m_handlingINVITE = false;
-      if (StartPendingReINVITE())
+      if (StartPendingReINVITE(4))
         return;
       // Is real error then
       break;
@@ -2199,11 +2267,12 @@ void SIPConnection::OnReceivedResponse(SIPTransaction & transaction, SIP_PDU & r
   // starting the next one.
   if (responseClass != 1) {
     pendingInvitations.Remove(&transaction);
-    StartPendingReINVITE();
+    StartPendingReINVITE(3);
   }
 
   if (handled)
     return;
+  PTRACE(0, "SIP Error " << response.GetStatusCode() << " received: " << response.GetStatusCodeDescription(response.GetStatusCode()));
 
   // If we are doing a local hold, and it failed, we do not release the connection
   switch (m_holdToRemote) {
@@ -2503,6 +2572,7 @@ void SIPConnection::OnReceivedReINVITE(SIP_PDU & request)
 {
   if (m_handlingINVITE || GetPhase() < ConnectedPhase) {
     PTRACE(2, "SIP\tRe-INVITE from " << request.GetURI() << " received while INVITE in progress on " << *this);
+    PTRACE(0, "491 Request pending sent to " << request.GetURI());
     request.SendResponse(*transport, SIP_PDU::Failure_RequestPending);
     return;
   }
@@ -2575,7 +2645,7 @@ void SIPConnection::OnReceivedACK(SIP_PDU & response)
     OnEstablished();
   }
 
-  StartPendingReINVITE();
+  StartPendingReINVITE(2);
 }
 
 
@@ -3041,14 +3111,16 @@ bool SIPConnection::OnReceivedAnswerSDPSession(SDPSessionDescription & sdp, unsi
   // Then open the streams if the direction allows and if needed
   // If already open then update to new parameters/payload type
 
-  if (recvStream == NULL &&
+	// Acordex added (otherSidesDir&SDPMediaDescription::SendOnly) != 0  check
+  if (recvStream == NULL && (otherSidesDir&SDPMediaDescription::SendOnly) != 0 &&
       ownerCall.OpenSourceMediaStreams(*this, mediaType, rtpSessionId) &&
       (recvStream = GetMediaStream(rtpSessionId, true)) != NULL) {
     recvStream->UpdateMediaFormat(*m_localMediaFormats.FindFormat(recvStream->GetMediaFormat()));
     recvStream->SetPaused((otherSidesDir&SDPMediaDescription::SendOnly) == 0);
   }
 
-  if (sendStream == NULL) {
+	// Acordex added (otherSidesDir&SDPMediaDescription::RecvOnly) != 0 check
+  if (sendStream == NULL && (otherSidesDir&SDPMediaDescription::RecvOnly) != 0) {
     PSafePtr<OpalConnection> otherParty = GetOtherPartyConnection();
     if (otherParty != NULL &&
         ownerCall.OpenSourceMediaStreams(*otherParty, mediaType, rtpSessionId) &&
@@ -3149,7 +3221,7 @@ bool SIPConnection::SendInviteOK()
   PString externalSDP = m_stringOptions(OPAL_OPT_EXTERNAL_SDP);
   if (externalSDP.IsEmpty()) {
     SDPSessionDescription sdpOut(m_sdpSessionId, ++m_sdpVersion, GetDefaultSDPConnectAddress());
-    if (!OnSendAnswerSDP(m_rtpSessions, sdpOut))
+    if (!OnSendAnswerSDP(m_rtpSessions, sdpOut, true))  // Acordex added last parameter to pass coming from invite info
       return false;
     return SendInviteResponse(SIP_PDU::Successful_OK, &sdpOut);
   }

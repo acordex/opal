@@ -699,7 +699,7 @@ void OpalConnection::AutoStartMediaStreams(bool force)
 bool OpalConnection::SwitchFaxMediaStreams(bool toT38)
 {
   if (m_faxMediaStreamsSwitchState != e_NotSwitchingFaxMediaStreams) {
-    PTRACE(2, "OpalCon\tNested call to SwitchFaxMediaStreams on " << *this);
+    PTRACE(0, "OpalCon\tNested call to SwitchFaxMediaStreams on " << *this);
     return false;
   }
 

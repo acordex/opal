@@ -646,7 +646,8 @@ class SIPConnection : public OpalRTPConnection
 
     virtual bool OnSendAnswerSDP(
       OpalRTPSessionManager & rtpSessions,
-      SDPSessionDescription & sdpOut
+      SDPSessionDescription & sdpOut,
+      bool reInvite   // Acordex added
     );
     virtual bool OnSendAnswerSDPSession(
       const SDPSessionDescription & sdpIn,
@@ -672,7 +673,7 @@ class SIPConnection : public OpalRTPConnection
     );
 
     bool SendReINVITE(PTRACE_PARAM(const char * msg));
-    bool StartPendingReINVITE();
+    bool StartPendingReINVITE(int from);   // Acordex added diagnositic arg
 
     friend class SIPInvite;
     static PBoolean WriteINVITE(OpalTransport & transport, void * param);

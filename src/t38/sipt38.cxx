@@ -76,8 +76,35 @@ SDPFaxMediaDescription::SDPFaxMediaDescription(const OpalTransportAddress & addr
 {
   t38Attributes.SetAt("T38FaxRateManagement", "transferredTCF");
   t38Attributes.SetAt("T38FaxVersion",        "0");
-  //t38Attributes.SetAt("T38MaxBitRate",        "9600");
-  //t38Attributes.SetAt("T38FaxMaxBuffer",      "200");
+// Acordex added below
+// VOIP reports that the next 3 are no required
+  t38Attributes.SetAt("T38MaxBitRate",        "14400");
+  t38Attributes.SetAt("T38FaxUdpEC",          "t38UDPRedundancy");
+// This is interpretted differently in different specs, it is either the max fax data size
+// = (ms per sample * 14400) / (8000) = 72, or the make UPTDL payload which is affected by the
+// redundancy amount. Currently we have two redundant packets to the size works out to be:
+//  = (ms per sample * 14400) / (8000) = 72 * 3 + 6 * 3 (IFP Size, type, data field count, field type, data length)
+// + 2 (redundant field count) + 2 (UDPTL sequence number). = 238
+// or with 1 redundant packet
+//  = (ms per sample * 14400) / (8000) = 72 * 2 + 6 * 2 (IFP Size, type, data field count, field type, data length)
+// + 2 (redundant field count) + 2 (UDPTL sequence number). = 160
+// There is also 42 bytes of IP/UDP header so packet size is + 42
+   t38Attributes.SetAt("T38FaxMaxDatagram",        "400"); 	// recommmend by VIOP, somewhat arbitrary
+   
+//   t38Attributes.SetAt("T38FaxMaxDatagram",        "238"); // size of UDPDTL payload
+//  t38Attributes.SetAt("T38FaxMaxDatagram",        "72");	 // size of UDTPL data portion
+// Test extra attributes
+//  t38Attributes.SetAt("T38FaxFillBitRemoval",        "0");
+//  t38Attributes.SetAt("T38FaxTranscodingMMR",        "0");
+//  t38Attributes.SetAt("T38FaxTranscodingJBIG",        "0");
+
+// also seen sizes
+//  t38Attributes.SetAt("T38FaxMaxBuffer",        "262");
+//  t38Attributes.SetAt("T38FaxMaxDatagram",        "176");
+//  t38Attributes.SetAt("T38FaxMaxDatagram",        "76");
+// perhaps for 9600 V29 only ?
+//	t38Attributes.SetAt("T38MaxBitRate",        "9600");
+//	t38Attributes.SetAt("T38FaxMaxBuffer",      "200");
 }
 
 PCaselessString SDPFaxMediaDescription::GetSDPTransportType() const

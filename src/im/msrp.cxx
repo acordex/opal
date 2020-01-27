@@ -835,7 +835,8 @@ bool MSRPProtocol::SendREPORT(const PString & chunkId,
   flush();
 
   {
-    PStringStream str; str << ::setfill('\r') << mime.PrintContents(str);
+    PStringStream str; str << ::setfill('\r');
+    mime.PrintContents(str);
     PTRACE(4, "Sending MSRP REPORT\n" << "MSRP " << chunkId << " " << MSRPCommands[REPORT] << CRLF 
                                                  << "To-Path: " << toUrl << CRLF 
                                                  << "From-Path: "<< fromUrl << CRLF 

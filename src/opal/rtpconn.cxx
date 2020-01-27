@@ -171,7 +171,7 @@ RTP_Session * OpalRTPConnection::CreateSession(const OpalTransport & transport,
   while (!rtpSession->Open(localAddress, nextPort, nextPort, manager.GetMediaTypeOfService(mediaType), natMethod, rtpqos)) {
     nextPort = manager.GetRtpIpPortPair();
     if (nextPort == firstPort) {
-      PTRACE(1, "RTPCon\tNo ports available for RTP session " << sessionID << ","
+      PTRACE(0, "RTPCon\tNo ports available for RTP session " << sessionID << ","
                 " base=" << manager.GetRtpIpPortBase() << ","
                 " max=" << manager.GetRtpIpPortMax() << ","
                 " bind=" << localAddress << ","

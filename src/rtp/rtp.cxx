@@ -1210,13 +1210,14 @@ RTP_Session::SendReceiveStatus RTP_Session::Internal_OnReceiveData(RTP_DataFrame
                << ", abnormal change of sequence numbers, adjusting to expect " << expectedSequenceNumber);
       }
       else {
-        PTRACE(2, "RTP\tSession " << sessionID << ", ssrc=" << syncSourceIn
-               << ", incorrect sequence, got " << sequenceNumber << " expected " << expectedSequenceNumber);
-
+     	 PTRACE(sequenceNumber + 1 == expectedSequenceNumber ? 3 : 2, "RTP\tSession " << sessionID << ", out of order packet, received "
+             << sequenceNumber << " expected " << expectedSequenceNumber << " ssrc=" << syncSourceIn);
+    
         if (resequenceOutOfOrderPackets)
           return e_IgnorePacket; // Non fatal error, just ignore
 
-        packetsOutOfOrder++;
+         if (sequenceNumber + 1 != expectedSequenceNumber) // repeated packets OK - Acordex added
+     		packetsOutOfOrder++;
       }
     }
     else if (resequenceOutOfOrderPackets &&
@@ -1582,7 +1583,7 @@ RTP_Session::SendReceiveStatus RTP_Session::OnReceiveControl(RTP_ControlFrame & 
         }
 
         if (closeOnBye) {
-          PTRACE(3, "RTP\tSession " << sessionID << ", Goodbye packet closing transport");
+          PTRACE(0, "RTP\tSession " << sessionID << ", Goodbye packet closing transport");
           return e_AbortTransport;
         }
         break;
@@ -1933,12 +1934,12 @@ PBoolean RTP_UDP::Open(PIPSocket::Address transportLocalAddress,
 
         case PNatMethod::RTPSupported :
           if (natMethod->CreateSocketPair(dataSocket, controlSocket, localAddress)) {
-            PTRACE(4, "RTP\tSession " << sessionID << ", " << natMethod->GetName() << " created STUN RTP/RTCP socket pair.");
+            PTRACE(1, "RTP\tSession " << sessionID << ", " << natMethod->GetName() << " created STUN RTP/RTCP socket pair.");
             dataSocket->GetLocalAddress(localAddress, localDataPort);
             controlSocket->GetLocalAddress(localAddress, localControlPort);
           }
           else {
-            PTRACE(2, "RTP\tSession " << sessionID << ", " << natMethod->GetName()
+            PTRACE(1, "RTP\tSession " << sessionID << ", " << natMethod->GetName()
                    << " could not create RTP/RTCP socket pair; trying to create individual sockets.");
             if (natMethod->CreateSocket(dataSocket, localAddress) && natMethod->CreateSocket(controlSocket, localAddress)) {
               dataSocket->GetLocalAddress(localAddress, localDataPort);
@@ -1949,7 +1950,7 @@ PBoolean RTP_UDP::Open(PIPSocket::Address transportLocalAddress,
               delete controlSocket;
               dataSocket = NULL;
               controlSocket = NULL;
-              PTRACE(2, "RTP\tSession " << sessionID << ", " << natMethod->GetName()
+              PTRACE(1, "RTP\tSession " << sessionID << ", " << natMethod->GetName()
                      << " could not create RTP/RTCP sockets individually either, using normal sockets.");
             }
           }
@@ -1961,7 +1962,7 @@ PBoolean RTP_UDP::Open(PIPSocket::Address transportLocalAddress,
              talk to the real RTP destination. All we can so is bind to the
              local interface the NAT is on and hope the NAT router is doing
              something sneaky like symmetric port forwarding. */
-          PTRACE(2, "RTP\tSession " << sessionID << ", " << natMethod->GetName()
+          PTRACE(1, "RTP\tSession " << sessionID << ", " << natMethod->GetName()
                   << " cannot create RTP/RTCP socket pair; creating individual sockets.");
           natMethod->GetInterfaceAddress(bindingAddress);
           break;
@@ -1975,11 +1976,18 @@ PBoolean RTP_UDP::Open(PIPSocket::Address transportLocalAddress,
              !controlSocket->Listen(bindingAddress, 1, localControlPort)) {
         dataSocket->Close();
         controlSocket->Close();
-        if ((localDataPort > portMax) || (localDataPort > 0xfffd))
+        // actually portBase == portMax and it is the level above that running through
+        // all the available ports (rtpconn.c CreateSession())
+        if ((localDataPort > portMax) || (localDataPort > 0xfffd)) {
+          PTRACE(0, "RTP\tSession " << sessionID << ", " << " could not create ran out of ports " << localDataPort);
           return false; // If it ever gets to here the OS has some SERIOUS problems!
+		}
         localDataPort    += 2;
         localControlPort += 2;
       }
+       PTRACE(1, "RTP\tSession " << sessionID << ", " << " established data socket " << localDataPort << " handle " << dataSocket->GetHandle()
+       	<< " ctrl socket " << localControlPort << " handle " << controlSocket->GetHandle());
+
     }
 
 #   ifndef __BEOS__
@@ -2088,14 +2096,14 @@ PString RTP_UDP::GetLocalHostName()
 PBoolean RTP_UDP::SetRemoteSocketInfo(PIPSocket::Address address, WORD port, PBoolean isDataPort)
 {
   if (remoteIsNAT) {
-    PTRACE(2, "RTP_UDP\tSession " << sessionID << ", ignoring remote socket info as remote is behind NAT");
+    PTRACE(0, "RTP_UDP\tSession " << sessionID << ", ignoring remote socket info as remote is behind NAT");
     return true;
   }
 
   if (!PAssert(address.IsValid() && port != 0,PInvalidParameter))
     return false;
 
-  PTRACE(3, "RTP_UDP\tSession " << sessionID << ", SetRemoteSocketInfo: "
+  PTRACE(1, "RTP_UDP\tSession " << sessionID << ", SetRemoteSocketInfo: "
          << (isDataPort ? "data" : "control") << " channel, "
             "new=" << address << ':' << port << ", "
             "local=" << localAddress << ':' << localDataPort << '-' << localControlPort << ", "
@@ -2240,6 +2248,7 @@ RTP_Session::SendReceiveStatus RTP_UDP::ReadDataOrControlPDU(BYTE * framePtr,
       allowRemoteTransmitAddressChange = false;
     }
     else if (remoteTransmitAddress != addr && !allowRemoteTransmitAddressChange) {
+    	// actually on reopen after shutdown this can be our own 1 byte message use to wake of reading
       PTRACE(2, "RTP_UDP\tSession " << sessionID << ", "
              << channelName << " PDU from incorrect host, "
                 " is " << addr << " should be " << remoteTransmitAddress);
@@ -2257,7 +2266,7 @@ RTP_Session::SendReceiveStatus RTP_UDP::ReadDataOrControlPDU(BYTE * framePtr,
   switch (socket.GetErrorNumber(PChannel::LastReadError)) {
     case ECONNRESET :
     case ECONNREFUSED :
-      PTRACE(2, "RTP_UDP\tSession " << sessionID << ", " << channelName << " port on remote not ready.");
+      PTRACE(0, "RTP_UDP\tSession " << sessionID << ", " << channelName << " port on remote not ready.");
       if (++badTransmitCounter == 1) 
         badTransmitStart = PTime();
       else {

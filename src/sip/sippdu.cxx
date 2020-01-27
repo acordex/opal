@@ -3066,6 +3066,12 @@ void SIPTransaction::OnTimeout(PTimer &, INT)
 
       case Completed :
         // We completed and finished waiting for retries
+// Acordex CB 1/25/11 removed this code previously added to handle request-pending deadlock, this causes crash in
+// StartPendingReINVITE()
+ /*      if (m_connection != NULL) {
+        	PTRACE(3, "SIPTransaction::OnTimeout Restarting and pending invites");
+    		m_connection->SIPConnection::StartPendingReINVITE(1);
+    		} */
         SetTerminated(Terminated_Success);
         break;
 

@@ -593,12 +593,12 @@ void OpalMediaPatch::Main()
     sourceFrame.SetPayloadSize(0);
 
     if (!source.ReadPacket(sourceFrame)) {
-      PTRACE(4, "Patch\tThread ended because source read failed");
+      PTRACE(1, "Patch\tThread ended because source read failed");
       break;
     }
  
     if (!DispatchFrame(sourceFrame)) {
-      PTRACE(4, "Patch\tThread ended because all sink writes failed");
+      PTRACE(1, "Patch\tThread ended because all sink writes failed");
       break;
     }
  
