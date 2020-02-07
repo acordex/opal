@@ -136,13 +136,15 @@ bool SIPHandler::ShutDown()
     if (!mutex.IsLocked())
     return true;
 
-  while (!m_stateQueue.empty())
-    m_stateQueue.pop();
-
+    while (!m_stateQueue.empty()) {
+       m_stateQueue.pop();
+    }
+    
     switch (GetState()) {
       case Subscribed :
       case Unavailable :
         SendRequest(Unsubscribing);
+	    [[gnu::fallthrough]];
       case Unsubscribing :
         return m_transactions.IsEmpty();
 
@@ -418,6 +420,7 @@ void SIPHandler::OnReceivedResponse(SIPTransaction & transaction, SIP_PDU & resp
     default :
       if (responseClass != 2)
         break;
+	  [[gnu::fallthrough]];
 
     case SIP_PDU::Failure_UnAuthorised :
     case SIP_PDU::Failure_ProxyAuthenticationRequired :
@@ -581,6 +584,8 @@ void SIPHandler::OnFailed(SIP_PDU::StatusCodes code)
         SetState(Unavailable);
         break;
       }
+	  [[gnu::fallthrough]];
+	  
     case SIP_PDU::Failure_Forbidden:
       if (m_retry403) {
         if (GetState() != Unsubscribing) {
@@ -590,6 +595,7 @@ void SIPHandler::OnFailed(SIP_PDU::StatusCodes code)
       }
 
       // Do next case to finalise Unsubscribe even though there was an error
+	  [[gnu::fallthrough]];
 
     default :
       PTRACE(4, "SIP\tNot retrying " << GetMethod() << " due to error response " << code);
@@ -997,7 +1003,7 @@ void SIPSubscribeHandler::SendStatus(SIP_PDU::StatusCodes code, State state)
         status.m_reSubscribing = false;
         endpoint.OnSubscriptionStatus(status);
       }
-      // Do next state
+      [[gnu::fallthrough]];  // Do next state
 
     case Refreshing :
       status.m_wasSubscribing = true;

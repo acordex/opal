@@ -463,11 +463,11 @@ CREATE_IETFSPEEX_CAP_DATA(desc, suffix, ordinal, 8000) \
   prefix##suffix,                     /* destination format */ \
   (void *)ordinal,                    /* user data */ \
   8000,                               /* samples per second */ \
-  bitsPerFrame*50,                    /* raw bits per second */ \
+  (unsigned int)(bitsPerFrame*50),                    /* raw bits per second */ \
   NS_PER_FRAME,                       /* nanoseconds per frame */ \
   {{ \
     NARROW_SAMPLES_PER_FRAME,           /* samples per frame */ \
-    (bitsPerFrame + 7) / 8,             /* bytes per frame */ \
+    (unsigned int)((bitsPerFrame + 7) / 8),             /* bytes per frame */ \
     1,                                  /* recommended number of frames per packet */ \
     1,                                  /* maximum number of frames per packet  */ \
   }}, \
@@ -495,11 +495,11 @@ CREATE_IETFSPEEX_CAP_DATA(desc, suffix, ordinal, 8000) \
   L16Desc,                            /* destination format */ \
   (void *)ordinal,                    /* user data */ \
   8000,                               /* samples per second */ \
-  bitsPerFrame*50,                    /* raw bits per second */ \
+  (unsigned int)(bitsPerFrame*50),                    /* raw bits per second */ \
   NS_PER_FRAME,                       /* nanoseconds per frame */ \
   {{ \
     NARROW_SAMPLES_PER_FRAME,           /* samples per frame */ \
-    (bitsPerFrame+7)/8,                 /* bytes per frame */ \
+     (unsigned int)((bitsPerFrame+7)/8),                 /* bytes per frame */ \
     1,                                  /* recommended number of frames per packet */ \
     1,                                  /* maximum number of frames per packet */ \
   }}, \

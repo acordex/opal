@@ -317,7 +317,8 @@ int OpalG711_PLC::dofe_partly(short *out, int c, int size)
 
     // fall thru
                           }
-                          // still overlapping period at the beginning?
+     [[gnu::fallthrough]];
+    // still overlapping period at the beginning?
   case LOSS_PERIOD2overlap:
     if(channel[c].conceal_count + size >= ms2samples(CONCEAL_PERIOD1)+channel[c].pitch_overlap) {
       size = ms2samples(CONCEAL_PERIOD1)+channel[c].pitch_overlap-channel[c].conceal_count;
@@ -440,7 +441,8 @@ void OpalG711_PLC::addtohistory(short *s, int size)
 	getfespeech(transition_buf, c, channel[c].transition_len);
 	scalespeech(transition_buf, c, channel[c].transition_len,false);
 	channel[c].transition_count=0;
-
+	[[gnu::fallthrough]];
+	
       case TRANSITION:
 	int end = channel[c].transition_count+size;
 	if(end >= channel[c].transition_len) {

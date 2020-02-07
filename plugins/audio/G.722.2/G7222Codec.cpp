@@ -116,7 +116,7 @@ const UWord8 AMRWB_block_size_octet[16]= { 18, 24, 33, 37, 41, 47, 51, 59, 61, 6
 // 3GPP IF1 mode adds 24 bits to core speech bits
 // 3GPP IF2 mode adds 5 bits to core speech bits
 
-#define AMRWB_ALIGNED_BPS(mode) ((AMRWB_block_size_octet[(mode)] + 1) * 50 * 8)
+#define AMRWB_ALIGNED_BPS(mode) ((unsigned int)((AMRWB_block_size_octet[(mode)] + 1) * 50 * 8))
 
 // All formats except 3GPP IF1 pad the core frame to fill the last octet (even when there are multiple
 // frames within the packet).
@@ -617,7 +617,7 @@ static struct PluginCodec_Definition AMRWBCodecDefinition[] =
     AMRWB_ALIGNED_BPS (AMRWB_24k),          // raw bits per second
     20000,                                  // microseconds per frame
     AMRWB_FRAME_SAMPLES,                    // samples per frame
-    AMRWB_block_size_octet[AMRWB_24k] + 1,  // bytes per frame
+    (unsigned int)(AMRWB_block_size_octet[AMRWB_24k] + 1),  // bytes per frame
     
     1,                                      // recommended number of frames per packet
     1,                                      // maximum number of frames per packet
@@ -652,7 +652,7 @@ static struct PluginCodec_Definition AMRWBCodecDefinition[] =
     AMRWB_ALIGNED_BPS (AMRWB_24k),          // raw bits per second
     20000,                                  // microseconds per frame
     AMRWB_FRAME_SAMPLES,                    // samples per frame
-    AMRWB_block_size_octet[AMRWB_24k] + 1,  // bytes per frame
+     (unsigned int)(AMRWB_block_size_octet[AMRWB_24k] + 1),  // bytes per frame
     1,                                      // recommended number of frames per packet
     1,                                      // maximum number of frames per packet
     0,                                      // IANA RTP payload code

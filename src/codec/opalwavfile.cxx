@@ -378,7 +378,7 @@ static struct PWAVFilePluginValidFormat {
   { "MS-GSM",         PWAVFile::fmt_GSM,  MSGSM_ExtendedHeader, sizeof(MSGSM_ExtendedHeader) },
   { OPAL_G728,        PWAVFile::fmt_G728 },
   { OPAL_G729,        PWAVFile::fmt_G729 },
-  { }
+  { NULL, 0, NULL, 0}
 };
 
 template <class Factory, class Instance>

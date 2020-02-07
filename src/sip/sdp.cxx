@@ -570,7 +570,7 @@ bool SDPMediaDescription::Decode(const PStringArray & tokens)
     case 65535 :
       PTRACE(2, "SDP\tIllegal port=65535 in media session " << mediaType << ", trying to continue.");
       port = 65534;
-      // Do next case
+      [[gnu::fallthrough]]; // Do next case
 
     default :
       PTRACE(4, "SDP\tMedia session port=" << port);
@@ -899,10 +899,13 @@ SDPDummyMediaDescription::SDPDummyMediaDescription(const OpalTransportAddress & 
   switch (m_tokens.GetSize()) {
     case 0 :
       m_tokens.AppendString("unknown");
+	  [[gnu::fallthrough]];
     case 1 :
       m_tokens.AppendString("0");
+	  [[gnu::fallthrough]];
     case 2 :
       m_tokens.AppendString("unknown");
+	  [[gnu::fallthrough]];
     case 3 :
       m_tokens.AppendString("127");
   }

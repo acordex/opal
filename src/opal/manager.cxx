@@ -1488,16 +1488,22 @@ PBoolean OpalManager::IsRTPNATEnabled(OpalConnection & /*conn*/,
 PBoolean OpalManager::TranslateIPAddress(PIPSocket::Address & localAddress,
                                      const PIPSocket::Address & remoteAddress)
 {
+  PTRACE(3, "OPAL\tTranslateIPAddress \"" << localAddress << "\"");
+
   if (!IsLocalAddress(localAddress))
     return false; // Is already translated
 
+  PTRACE(3, "OPAL\tTranslateIPAddress is local");
   if (IsLocalAddress(remoteAddress))
     return false; // Does not need to be translated
 
+  PTRACE(3, "OPAL\ttTranslateIPAddress remote  is  not local");
   if (translationAddress.IsValid()) {
     localAddress = translationAddress; // Translate it!
+  	PTRACE(3, "OPAL\ttTranslateIPAddress translated to \"" << localAddress << "\"");
     return true;
   }
+  	PTRACE(3, "OPAL\ttTranslateIPAddress translationAddress not valid \"" << translationAddress << "\"");
 
   PIPSocket::Address stunInterface;
   if (stun != NULL &&
