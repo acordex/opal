@@ -594,10 +594,13 @@ void Q931::SetBearerCapabilities(const PString & str)
   switch (caps.GetSize()) {
     default :
       userInfoLayer1 = caps[3].AsUnsigned();
+      [[gnu::fallthrough]]; 
     case 3 :
       codingStandard = caps[2].AsUnsigned();
+      [[gnu::fallthrough]]; 
     case 2 :
       transferRate = caps[1].AsUnsigned();
+      [[gnu::fallthrough]]; 
     case 1 :
       if (caps[0] *= "speech")
         capability = TransferSpeech;
@@ -605,6 +608,7 @@ void Q931::SetBearerCapabilities(const PString & str)
         capability = TransferUnrestrictedDigital;
       else
         capability = (Q931::InformationTransferCapability)caps[0].AsUnsigned();
+      [[gnu::fallthrough]]; 
     case 0 :
       break;
   }

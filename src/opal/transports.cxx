@@ -545,7 +545,7 @@ void OpalListener::ListenForConnections(PThread & thread, INT)
         case HandOffThreadMode :
           transport->AttachThread(&thread);
           this->thread = NULL;
-          // Then do next case
+          [[gnu::fallthrough]]; // Then do next case
 
         case SingleThreadMode :
           acceptHandler(*this, (INT)transport);
@@ -1127,7 +1127,7 @@ PBoolean OpalTransportTCP::ReadPDU(PBYTEArray & pdu)
 
     default :  // Unknown version number
       SetErrorValues(ProtocolFailure, 0x80000000);
-      // Do case for read error
+      [[gnu::fallthrough]]; // Do case for read error
 
     case -1 :
       return PFalse;

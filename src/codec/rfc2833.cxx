@@ -334,7 +334,7 @@ void OpalRFC2833Proto::SendAsyncFrame()
 
       m_transmitState = TransmitEnding1;
       m_asyncTransmitTimer.RunContinuous(5); // Output the three end packets a bit quicker.
-      // Do next case
+      [[gnu::fallthrough]]; // Do next case
 
     case TransmitEnding1:
       payload[1] |= 0x80;

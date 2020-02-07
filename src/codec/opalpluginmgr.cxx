@@ -40,7 +40,9 @@
 #include <opal/transcoders.h>
 #include <codec/opalpluginmgr.h>
 #include <codec/opalplugin.h>
+#if OPAL_PTLIB_WAVFILE
 #include <codec/opalwavfile.h>
+#endif
 
 #if OPAL_H323
 #include <h323/h323caps.h>
@@ -1685,7 +1687,9 @@ void OpalPluginCodecManager::RegisterCodecPlugins(unsigned int count, const Plug
   #endif
       case PluginCodec_MediaTypeAudio:
         new OpalPluginTranscoderFactory<OpalPluginFramedAudioTranscoder>::Worker(OpalTranscoderKey(src, dst), codecDefn, isEncoder);
-        OpalWAVFile::AddMediaFormat(isEncoder ? dst : src);
+  #if OPAL_PTLIB_WAVFILE
+ 		OpalWAVFile::AddMediaFormat(isEncoder ? dst : src);
+  #endif
         break;
       case PluginCodec_MediaTypeAudioStreamed:
         new OpalPluginTranscoderFactory<OpalPluginStreamedAudioTranscoder>::Worker(OpalTranscoderKey(src, dst), codecDefn, isEncoder);

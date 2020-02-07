@@ -886,7 +886,7 @@ static OpalConnection::CallEndReason H323TranslateToCallEndReasonCode(Q931::Caus
         case H225_ReleaseCompleteReason::e_newConnectionNeeded:
           return H323Connection::EndedByTemporaryFailure;
       }
-      // Do next case
+      [[gnu::fallthrough]]; // Do next case
 
     case Q931::UnknownCauseIE :
       return H323Connection::EndedByRefusal;

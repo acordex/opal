@@ -471,7 +471,7 @@ PBoolean SIPEndPoint::SetupTransfer(const PString & token,
   if (!AddConnection(connection))
     return false;
 
-  if (remoteParty.Find(";OPAL-"OPAL_SIP_REFERRED_CONNECTION) == P_MAX_INDEX)
+  if (remoteParty.Find(";OPAL-" OPAL_SIP_REFERRED_CONNECTION) == P_MAX_INDEX)
     otherConnection->Release(OpalConnection::EndedByCallForwarded);
   else
     otherConnection->SetPhase(OpalConnection::ForwardingPhase);
@@ -515,7 +515,7 @@ bool SIPEndPoint::ClearDialogContext(SIPDialogContext & context)
      context. Highly unlikely this will ever by a million ... */
   context.IncrementCSeq(1000000);
 
-  std::auto_ptr<OpalTransport> transport(CreateTransport(context.GetRemoteURI(), context.GetLocalURI().GetHostName()));
+  std::unique_ptr<OpalTransport> transport(CreateTransport(context.GetRemoteURI(), context.GetLocalURI().GetHostName()));
   if (transport.get() == NULL)
     return true; // Can't create transport, so remote host uncontactable, assume dialog cleared.
 
@@ -963,7 +963,7 @@ bool SIPEndPoint::OnReceivedMESSAGE(OpalTransport & transport, SIP_PDU & pdu)
 
       case ConnectionlessMessageInfo::SendOK :
         pdu.SendResponse(transport, SIP_PDU::Successful_OK, this);
-        // Do next case
+        [[gnu::fallthrough]]; // Do next case
 
       case ConnectionlessMessageInfo::ResponseSent :
         return true;

@@ -1516,8 +1516,9 @@ bool SIPConnection::SendReINVITE(PTRACE_PARAM(const char * msg))
 
   pendingInvitations.Append(invite);
 // Acordex CB 2/3/11 - add this check to see if this race condition happens
-  if (!startImmediate && !m_handlingINVITE)
+  if (!startImmediate && !m_handlingINVITE) {
   	 PTRACE(0, "Race condition during re-INVITE to " << msg);
+  }
   return true;
 }
 
@@ -3158,7 +3159,7 @@ void SIPConnection::OnCreatingINVITE(SIPInvite & request)
 
     case e_prackRequired :
       mime.AddRequire("100rel");
-      // Then add supported as well
+      [[gnu::fallthrough]]; // Then add supported as well
 
     case e_prackSupported :
       mime.AddSupported("100rel");
@@ -3409,7 +3410,7 @@ void SIPConnection::OnUserInputInlineRFC2833(OpalRFC2833Info & info, INT type)
 
     case UserInputMethodUnknown :
       m_receivedUserInputMethod = ReceivedRFC2833;
-      // Do default case
+      [[gnu::fallthrough]]; // Do default case
 
     default:
       OpalRTPConnection::OnUserInputInlineRFC2833(info, type);
@@ -3431,7 +3432,7 @@ void SIPConnection::OnReceivedINFO(SIP_PDU & request)
 
       case UserInputMethodUnknown :
         m_receivedUserInputMethod = ReceivedINFO;
-        // Do default case
+        [[gnu::fallthrough]]; // Do default case
 
       default:
         PStringArray lines = request.GetEntityBody().Lines();
@@ -3465,7 +3466,7 @@ void SIPConnection::OnReceivedINFO(SIP_PDU & request)
 
       case UserInputMethodUnknown :
         m_receivedUserInputMethod = ReceivedINFO;
-        // Do default case
+        [[gnu::fallthrough]]; // Do default case
 
       default:
         PString tones = request.GetEntityBody().Trim();
@@ -3489,12 +3490,13 @@ void SIPConnection::OnReceivedINFO(SIP_PDU & request)
 
   if (status == SIP_PDU::Successful_OK) {
     // Have INFO user input, disable the in-band tone detcetor to avoid double detection
-    m_detectInBandDTMF = false;
-
+#if OPAL_PTLIB_DTMF
+   m_detectInBandDTMF = false;
     OpalMediaStreamPtr stream = GetMediaStream(OpalMediaType::Audio(), true);
     if (stream != NULL && stream->RemoveFilter(m_dtmfDetectNotifier, OPAL_PCM16)) {
       PTRACE(4, "OpalCon\tRemoved detect DTMF filter on connection " << *this);
     }
+#endif
   }
 }
 

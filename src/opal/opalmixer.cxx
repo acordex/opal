@@ -624,7 +624,7 @@ bool OpalVideoMixer::MixStreams(RTP_DataFrame & frame)
 
         case 2 :
           y = m_height/4;
-          // Fall into next case
+          [[gnu::fallthrough]]; // Fall into next case
 
         case 3 :
         case 4 :

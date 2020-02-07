@@ -234,8 +234,8 @@ OpalConnection::OpalConnection(OpalCall & call,
   , m_dtmfDetectNotifier(PCREATE_NOTIFIER(OnDetectInBandDTMF))
   , m_sendInBandDTMF(true)
   , m_emittedInBandDTMF(0)
-#endif
   , m_dtmfSendNotifier(PCREATE_NOTIFIER(OnSendInBandDTMF))
+#endif
 #if OPAL_HAS_MIXER
   , m_recordAudioNotifier(PCREATE_NOTIFIER(OnRecordAudio))
 #if OPAL_VIDEO
@@ -1601,7 +1601,9 @@ void OpalConnection::OnApplyStringOptions()
       SetSendUserInputMode(SendUserInputAsQ931);
     else if (str == "InBand") {
       SetSendUserInputMode(SendUserInputInBand);
+#if OPAL_PTLIB_DTMF
       m_sendInBandDTMF = true;
+#endif
     }
 
 #if OPAL_PTLIB_DTMF

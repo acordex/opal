@@ -1830,7 +1830,7 @@ OpalConnection::CallEndReason H323Connection::SendSignalSetup(const PString & al
         case H225_AdmissionRejectReason::e_incompleteAddress :
           if (OnInsufficientDigits())
             break;
-          // Then default case
+          [[gnu::fallthrough]]; // Then default case
         default :
           return EndedByGatekeeper;
       }
@@ -3709,7 +3709,7 @@ void H323Connection::InternalEstablishedConnectionCheck()
     case ConnectedPhase :
       SetPhase(EstablishedPhase);
       OnEstablished();
-      // Set established in next case
+      [[gnu::fallthrough]]; // Set established in next case
 
     case EstablishedPhase :
       connectionState = EstablishedConnection; // Keep in sync

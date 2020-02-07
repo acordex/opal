@@ -290,7 +290,7 @@ void H323Transactor::HandleTransactions(PThread &, INT)
         case PChannel::Interrupted :
           if (transport->IsOpen())
             break;
-          // Do NotOpen case
+          [[gnu::fallthrough]]; // Do NotOpen case
 
         case PChannel::NotOpen :
           ok = PFalse;

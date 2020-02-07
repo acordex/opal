@@ -547,7 +547,7 @@ PBoolean OpalJitterBuffer::ReadData(RTP_DataFrame & frame, const PTimeInterval &
 
       PTRACE(4, "Jitter\tClock overrun   " COMMON_TRACE_INFO << " >= " << framesInBuffer << "*2");
       m_timestampDelta += m_averageFrameTime;
-      // Do next case
+      [[gnu::fallthrough]]; // Do next case
 
     case e_SynchronisationShrink :
       requiredTimestamp = CalculateRequiredTimestamp(playOutTimestamp);

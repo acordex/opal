@@ -534,7 +534,7 @@ PBoolean H323Gatekeeper::RegistrationRequest(PBoolean autoReg, PBoolean didGkDis
           // If have been told by GK that we need to discover it again, set flag
           // for next register done by timeToLive handler to do discovery
           requiresDiscovery = PTrue;
-          // Do next case
+          [[gnu::fallthrough]]; // Do next case
 
         case H225_RegistrationRejectReason::e_fullRegistrationRequired :
           registrationFailReason = GatekeeperLostRegistration;

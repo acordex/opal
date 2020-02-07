@@ -738,7 +738,7 @@ PBoolean H245NegLogicalChannel::HandleReject(const H245_OpenLogicalChannelReject
       // Master rejected our attempt to open, so try something else.
       if (pdu.m_cause.GetTag() == H245_OpenLogicalChannelReject_cause::e_masterSlaveConflict)
         connection.OnConflictingLogicalChannel(*channel);
-      // Do next case
+      [[gnu::fallthrough]]; // Do next case
 
     case e_AwaitingRelease :
       Release();

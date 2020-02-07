@@ -40,7 +40,9 @@
 #include <opal/mediafmt.h>
 #include <opal/mediacmd.h>
 #include <codec/opalplugin.h>
+#if OPAL_PTLIB_WAVFILE
 #include <codec/opalwavfile.h>
+#endif
 #include <ptlib/videoio.h>
 #include <ptclib/cypher.h>
 

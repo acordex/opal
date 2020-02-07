@@ -1930,7 +1930,7 @@ PBoolean RTP_UDP::Open(PIPSocket::Address transportLocalAddress,
              address and port to send to.
             */
           localHasNAT = true;
-          // Then do case for full cone support and create STUN sockets
+          [[gnu::fallthrough]]; // Then do case for full cone support and create STUN sockets
 
         case PNatMethod::RTPSupported :
           if (natMethod->CreateSocketPair(dataSocket, controlSocket, localAddress)) {

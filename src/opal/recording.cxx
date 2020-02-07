@@ -37,8 +37,9 @@
 
 #include <opal/opalmixer.h>
 #include <opal/recording.h>
+#if OPAL_PTLIB_WAVFILE
 #include <codec/opalwavfile.h>
-
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 

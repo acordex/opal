@@ -95,9 +95,9 @@ class OpalWAVFile : public PWAVFile
     );
 };
 
-
+#if P_WAVFILE
 PFACTORY_LOAD(PWAVFileConverterULaw);
-
+#endif
 
 #endif // OPAL_CODEC_OPALWAVFILE_H
 

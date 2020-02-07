@@ -443,7 +443,7 @@ PString SIPURL::AsQuotedString() const
 {
   PStringStream s;
 
-  if (!m_displayName)
+  if (!m_displayName.IsEmpty())
     s << '"' << m_displayName << "\" ";
   s << '<' << AsString() << '>';
 
@@ -644,8 +644,9 @@ PBoolean SIPURL::AdjustToDNSe(PINDEX entry)
   return true;
 }
 #else
-void SIPURL::TryNextSRV(SIPEndPoint &)
+PBoolean SIPURL::TryNextSRV(SIPEndPoint &)
 {
+  return false;
 }
 
 PBoolean SIPURL::AdjustToDNS(SIPEndPoint &)
