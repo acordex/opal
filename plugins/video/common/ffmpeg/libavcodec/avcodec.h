@@ -27,9 +27,9 @@
  */
 
 #include <errno.h>
-#include "libavcore/samplefmt.h"
-#include "libavutil/avutil.h"
-#include "libavutil/cpu.h"
+#include "../common/ffmpeg/libavcore/samplefmt.h"
+#include "../common/ffmpeg/libavutil/avutil.h"
+#include "../common/ffmpeg/libavutil/cpu.h"
 
 #define LIBAVCODEC_VERSION_MAJOR 52
 #define LIBAVCODEC_VERSION_MINOR 108
@@ -435,7 +435,7 @@ enum CodecID {
 #endif
 
 #if FF_API_OLD_AUDIOCONVERT
-#include "libavcore/audioconvert.h"
+#include "../common/ffmpeg/libavcore/audioconvert.h"
 
 /* Audio channel masks */
 #define CH_FRONT_LEFT            AV_CH_FRONT_LEFT

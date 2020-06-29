@@ -29,7 +29,7 @@
  * header, so it should not be directly included in your projects.
  */
 
-#include "libavutil/avconfig.h"
+#include "../common/ffmpeg/libavutil/avconfig.h"
 
 /**
  * Pixel format. Notes:
