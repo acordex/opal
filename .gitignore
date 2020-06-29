@@ -11,6 +11,7 @@ plugins/plugin-inc.mak
 revision.h
 samples/callgen/obj_linux_x86_64_d/
 src/codec/speex/libspeex/speex_config_types.h
+a.out
 
 *.so
 obj_linux_x86_64/
@@ -40,3 +41,5 @@ plugins/audio/SILK/SILK_SDK/decoder
 plugins/audio/SILK/SILK_SDK/encoder
 plugins/audio/SILK/SILK_SDK/signalcompare
 plugins/audio/SILK/SILK_SDK/*.a
+
+*~

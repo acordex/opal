@@ -3235,6 +3235,12 @@ fi
 $as_echo "$ac_cv_cxx_compiler_gnu" >&6; }
 if test $ac_compiler_gnu = yes; then
   GXX=yes
+    gcc_version=`$CXX -dumpfullversion`
+  { $as_echo "$as_me:${as_lineno-$LINENO}: gcc version is $gcc_version" >&5
+$as_echo "$as_me: gcc version is $gcc_version" >&6;};
+  GXX_MAJOR=`echo $gcc_version | sed 's/\..*$//'`
+  GXX_MINOR=`echo $gcc_version | sed -e 's/[0-9][0-9]*\.//' -e 's/\..*$//'`
+  GXX_PATCH=`echo $gcc_version | sed -e 's/[0-9][0-9]*\.[0-9][0-9]*\.//' -e 's/\..*$//'`
 else
   GXX=
 fi
@@ -4576,6 +4582,7 @@ if ac_fn_c_try_run "$LINENO"; then :
 else
   opal_gcc_clz=no
 fi
+
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
   conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
